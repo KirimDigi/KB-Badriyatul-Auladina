@@ -722,10 +722,33 @@ var events = {
     up: "touchend"
   }
 };
+var isInsideScrollable = function isInsideScrollable(el) {
+  while (el && el !== document.body) {
+    var style = window.getComputedStyle(el);
+    if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && el.scrollHeight > el.clientHeight) {
+      return el;
+    }
+    el = el.parentElement;
+  }
+  return null;
+};
 var initialY = 0,
-  newY = 0;
+  newY = 0,
+  scrollableEl = null;
 var eventMove = function eventMove(e) {
   var newY = !isTouchDevice() ? e.clientY : e.touches[0].clientY;
+  var deltaY = initialY - newY;
+  if (scrollableEl) {
+    if (deltaY > 0) {
+      if (scrollableEl.scrollTop + scrollableEl.clientHeight < scrollableEl.scrollHeight - 5) {
+        return;
+      }
+    } else if (deltaY < 0) {
+      if (scrollableEl.scrollTop > 5) {
+        return;
+      }
+    }
+  }
   if (initialY - 50 > newY) {
     pauseInvitation();
     swipeUp();
@@ -739,7 +762,11 @@ var eventUp = function eventUp(e) {
   window.removeEventListener(events[deviceType].move, eventMove, false);
 };
 var eventDown = function eventDown(e) {
-  if (e.cancelable) e.preventDefault();
+  var target = e.target;
+  scrollableEl = isInsideScrollable(target);
+  if (!scrollableEl && e.cancelable) {
+    e.preventDefault();
+  }
   initialY = !isTouchDevice() ? e.clientY : e.touches[0].clientY;
   window.addEventListener(events[deviceType].up, eventUp, false);
   window.addEventListener(events[deviceType].move, eventMove, false);
